@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>剪刀石頭布 RPG：勇者傳說</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts for Fantasy Styling -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Noto+Sans+TC:wght@400;600;700;900&display=swap" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            fantasy: ['Cinzel', 'Noto Sans TC', 'serif'],
+            sans: ['Noto Sans TC', 'sans-serif'],
+          },
+          colors: {
+            rpg: {
+              gold: '#fbbf24',
+              red: '#ef4444',
+              blue: '#3b82f6',
+              dark: '#0f172a',
+              card: '#1e293b',
+              accent: '#d97706'
+            }
+          },
+          animation: {
+            'bounce-short': 'bounce 0.5s ease-in-out 1',
+            'shake': 'shake 0.4s cubic-bezier(.36,.07,.19,.97) both',
+            'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'glow': 'glow 2s ease-in-out infinite alternate',
+          },
+          keyframes: {
+            shake: {
+              '10%, 90%': { transform: 'translate3d(-2px, 0, 0)' },
+              '20%, 80%': { transform: 'translate3d(4px, 0, 0)' },
+              '30%, 50%, 70%': { transform: 'translate3d(-6px, 0, 0)' },
+              '40%, 60%': { transform: 'translate3d(6px, 0, 0)' },
+            },
+            glow: {
+              '0%': { boxShadow: '0 0 10px rgba(251, 191, 36, 0.3)' },
+              '100%': { boxShadow: '0 0 25px rgba(251, 191, 36, 0.8)' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background-color: #090d16;
+      background-image: 
+        radial-gradient(at 20% 20%, rgba(30, 27, 75, 0.6) 0px, transparent 50%),
+        radial-gradient(at 80% 80%, rgba(69, 10, 10, 0.5) 0px, transparent 50%);
+      background-attachment: fixed;
+      min-height: 100vh;
+      color: #f3f4f6;
+    }
+
+    /* Custom Glassmorphism Panels */
+    .rpg-panel {
+      background: rgba(30, 41, 59, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    .rpg-button {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    .rpg-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px -4px rgba(234, 179, 8, 0.4);
+    }
+    .rpg-button:active {
+      transform: translateY(1px);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    /* Flash Effects */
+    .crit-flash {
+      animation: critBg 0.6s ease-out;
+    }
+    @keyframes critBg {
+      0% { background-color: rgba(239, 68, 68, 0.3); }
+      100% { background-color: transparent; }
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-900">
+
+  <!-- Top Header / Audio Toggle -->
+  <header class="w-full py-4 px-6 flex justify-between items-center border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-md sticky top-0 z-40">
+    <div class="flex items-center space-x-3">
+      <span class="text-2xl">⚔️</span>
+      <h1 class="text-xl md:text-2xl font-black font-fantasy tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-amber-200 to-amber-500">
+        剪刀石頭布：勇者傳說 RPG
+      </h1>
+    </div>
+    <button id="sound-toggle-btn" class="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 transition-colors border border-slate-700">
+      <span id="sound-icon">🔊</span>
+      <span id="sound-text">音效: 開</span>
+    </button>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-grow flex items-center justify-center p-4 md:p-6 max-w-5xl mx-auto w-full">
+
+    <!-- ================= 1. SETUP SCREEN ================= -->
+    <section id="setup-screen" class="w-full max-w-2xl rpg-panel rounded-2xl p-6 md:p-8 space-y-6">
+      <div class="text-center space-y-2">
+        <h2 class="text-2xl md:text-3xl font-bold font-fantasy text-amber-400">建立你的勇者角色</h2>
+        <p class="text-sm text-slate-400">選擇稱號與傳奇裝備，踏上討伐魔王的冒險旅程！</p>
+      </div>
+
+      <!-- Adventurer Name Input -->
+      <div class="space-y-2">
+        <label for="player-name-input" class="block text-sm font-semibold text-slate-300">
+          勇者名字 <span class="text-xs text-slate-500">(預設: 亞瑟)</span>
+        </label>
+        <div class="relative">
+          <input type="text" id="player-name-input" maxlength="12" placeholder="請輸入勇者名字..." 
+            class="w-full bg-slate-900/90 border border-slate-700 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 outline-none transition-all text-base">
+          <span class="absolute right-3 top-3 text-xl">🛡️</span>
+        </div>
+      </div>
+
+      <!-- Equipment Selection -->
+      <div class="space-y-3">
+        <label class="block text-sm font-semibold text-slate-300">
+          選擇傳奇裝備 <span class="text-xs text-amber-400">(三選一，賦予獨特特殊技能)</span>
+        </label>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+          <!-- Option 1: Sword -->
+          <label class="equip-card relative border-2 border-slate-700 hover:border-amber-500/60 bg-slate-900/60 rounded-xl p-4 cursor-pointer transition-all flex flex-col justify-between select-none">
+            <input type="radio" name="equipment" value="sword" checked class="hidden">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-3xl">⚔️</span>
+                <span class="equip-radio-indicator w-5 h-5 rounded-full border-2 border-slate-500 flex items-center justify-center text-xs text-amber-400 font-bold">✓</span>
+              </div>
+              <h3 class="font-bold text-amber-400 text-base mb-1">黃金聖劍</h3>
+              <p class="text-xs text-slate-400 leading-relaxed">
+                獲勝時有 <span class="text-amber-300 font-semibold">30% 機率</span> 觸發爆擊，直接獲得 <span class="text-emerald-400 font-bold">+2 分</span>！
+              </p>
+            </div>
+            <div class="mt-3 text-[10px] uppercase font-bold text-slate-500 tracking-wider">類型: 高傷害攻擊</div>
+          </label>
+
+          <!-- Option 2: Shield -->
+          <label class="equip-card relative border-2 border-slate-700 hover:border-amber-500/60 bg-slate-900/60 rounded-xl p-4 cursor-pointer transition-all flex flex-col justify-between select-none">
+            <input type="radio" name="equipment" value="shield" class="hidden">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-3xl">🛡️</span>
+                <span class="equip-radio-indicator w-5 h-5 rounded-full border-2 border-slate-500 flex items-center justify-center text-xs text-amber-400 font-bold"></span>
+              </div>
+              <h3 class="font-bold text-sky-400 text-base mb-1">魔法盾牌</h3>
+              <p class="text-xs text-slate-400 leading-relaxed">
+                每場戰鬥可自動 <span class="text-sky-300 font-semibold">完全抵擋 1 次</span> 電腦的得分機會（單場限用一次）。
+              </p>
+            </div>
+            <div class="mt-3 text-[10px] uppercase font-bold text-slate-500 tracking-wider">類型: 防禦保險</div>
+          </label>
+
+          <!-- Option 3: Luck Charm -->
+          <label class="equip-card relative border-2 border-slate-700 hover:border-amber-500/60 bg-slate-900/60 rounded-xl p-4 cursor-pointer transition-all flex flex-col justify-between select-none">
+            <input type="radio" name="equipment" value="charm" class="hidden">
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-3xl">🍀</span>
+                <span class="equip-radio-indicator w-5 h-5 rounded-full border-2 border-slate-500 flex items-center justify-center text-xs text-amber-400 font-bold"></span>
+              </div>
+              <h3 class="font-bold text-emerald-400 text-base mb-1">幸運符咒</h3>
+              <p class="text-xs text-slate-400 leading-relaxed">
+                將比賽中所有的 <span class="text-emerald-300 font-semibold">「平手」</span> 強制轉化為玩家勝利（獲得 <span class="text-emerald-400 font-bold">+1 分</span>）！
+              </p>
+            </div>
+            <div class="mt-3 text-[10px] uppercase font-bold text-slate-500 tracking-wider">類型: 逆轉勝率</div>
+          </label>
+
+        </div>
+      </div>
+
+      <!-- Start Game Button -->
+      <button id="start-game-btn" class="w-full rpg-button bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-slate-950 font-black text-lg py-4 rounded-xl shadow-lg border border-amber-300/40 tracking-wider">
+        開始冒險 🚀
+      </button>
+    </section>
+
+    <!-- ================= 2. GAMEPLAY SCREEN ================= -->
+    <section id="game-screen" class="w-full flex-col space-y-6 hidden">
+
+      <!-- Header Info Panel -->
+      <div class="rpg-panel rounded-2xl p-4 md:p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+        
+        <!-- Player Info -->
+        <div class="flex items-center space-x-3 w-full md:w-auto">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-2xl shadow-md border border-amber-300/30">
+            🧙‍♂️
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span id="hud-player-name" class="font-black text-lg text-amber-300">亞瑟</span>
+              <span id="hud-equip-badge" class="px-2 py-0.5 text-xs font-semibold rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                黃金聖劍 ⚔️
+              </span>
+            </div>
+            <div id="hud-shield-status" class="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+              <!-- Dynamic Shield Status if equipped -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Target Info / Match Goal -->
+        <div class="bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-800 text-center w-full md:w-auto flex justify-between md:block">
+          <span class="text-xs text-slate-400 block md:inline">獲勝目標:</span>
+          <span class="text-sm font-bold text-amber-400 ml-1">先得 5 分者勝 🏆</span>
+        </div>
+      </div>
+
+      <!-- Scoreboard & Battle Arena -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+
+        <!-- Player Fighter Box -->
+        <div class="md:col-span-5 rpg-panel rounded-2xl p-5 flex flex-col items-center justify-center relative overflow-hidden">
+          <div class="text-xs uppercase font-bold text-amber-400/80 tracking-widest mb-1">勇者 (Player)</div>
+          <h3 id="arena-player-name" class="font-black text-xl text-slate-100 mb-3">亞瑟</h3>
+          
+          <!-- Score Stars / Meter -->
+          <div class="flex items-center space-x-1.5 mb-4" id="player-score-stars">
+            <!-- Rendered by JS -->
+          </div>
+
+          <!-- Battle Move Display Avatar -->
+          <div id="player-choice-display" class="w-28 h-28 md:w-32 md:h-32 rounded-2xl bg-slate-900/80 border-2 border-amber-500/40 flex items-center justify-center text-5xl md:text-6xl shadow-inner transition-all duration-300">
+            ❓
+          </div>
+          <div id="player-choice-text" class="text-sm font-semibold text-slate-400 mt-2">等待出招...</div>
+        </div>
+
+        <!-- VS Divider / Round Indicator -->
+        <div class="md:col-span-2 flex flex-col items-center justify-center space-y-2 py-2">
+          <div class="text-2xl font-black font-fantasy text-amber-400 tracking-widest drop-shadow">VS</div>
+          <div id="round-counter-badge" class="px-3 py-1 rounded-full bg-slate-900 text-slate-300 text-xs font-bold border border-slate-800">
+            第 1 回合
+          </div>
+        </div>
+
+        <!-- Computer Fighter Box -->
+        <div class="md:col-span-5 rpg-panel rounded-2xl p-5 flex flex-col items-center justify-center relative overflow-hidden">
+          <div class="text-xs uppercase font-bold text-red-400/80 tracking-widest mb-1">惡魔領主 (Boss AI)</div>
+          <h3 class="font-black text-xl text-slate-100 mb-3">混沌魔王 👹</h3>
+          
+          <!-- Score Stars / Meter -->
+          <div class="flex items-center space-x-1.5 mb-4" id="computer-score-stars">
+            <!-- Rendered by JS -->
+          </div>
+
+          <!-- Battle Move Display Avatar -->
+          <div id="computer-choice-display" class="w-28 h-28 md:w-32 md:h-32 rounded-2xl bg-slate-900/80 border-2 border-red-500/40 flex items-center justify-center text-5xl md:text-6xl shadow-inner transition-all duration-300">
+            ❓
+          </div>
+          <div id="computer-choice-text" class="text-sm font-semibold text-slate-400 mt-2">準備發動攻擊...</div>
+        </div>
+
+      </div>
+
+      <!-- Equipment Activation Banner / Round Announcement -->
+      <div id="equip-trigger-banner" class="hidden min-h-[52px] rounded-xl bg-gradient-to-r from-amber-500/20 via-amber-400/30 to-amber-500/20 border border-amber-500/50 p-3 flex items-center justify-center space-x-2 text-center text-amber-300 font-bold text-base animate-bounce-short">
+        <span id="equip-trigger-icon" class="text-2xl">💥</span>
+        <span id="equip-trigger-msg">黃金聖劍觸發爆擊！獲得 +2 分！</span>
+      </div>
+
+      <!-- Action Pad / Choice Controls -->
+      <div class="rpg-panel rounded-2xl p-5 text-center space-y-4">
+        <h4 class="text-sm font-bold text-slate-300 tracking-wider">請選擇出招招式：</h4>
+        
+        <div class="grid grid-cols-3 gap-3 md:gap-6 max-w-md mx-auto">
+          <!-- Rock -->
+          <button data-move="rock" class="choice-btn rpg-button bg-slate-800/90 hover:bg-slate-700/90 border-2 border-amber-500/30 hover:border-amber-400 p-4 rounded-2xl flex flex-col items-center justify-center space-y-2 group">
+            <span class="text-4xl md:text-5xl group-hover:scale-110 transition-transform">✊</span>
+            <span class="font-bold text-slate-200 text-sm md:text-base">石頭</span>
+          </button>
+
+          <!-- Scissors -->
+          <button data-move="scissors" class="choice-btn rpg-button bg-slate-800/90 hover:bg-slate-700/90 border-2 border-amber-500/30 hover:border-amber-400 p-4 rounded-2xl flex flex-col items-center justify-center space-y-2 group">
+            <span class="text-4xl md:text-5xl group-hover:scale-110 transition-transform">✌️</span>
+            <span class="font-bold text-slate-200 text-sm md:text-base">剪刀</span>
+          </button>
+
+          <!-- Paper -->
+          <button data-move="paper" class="choice-btn rpg-button bg-slate-800/90 hover:bg-slate-700/90 border-2 border-amber-500/30 hover:border-amber-400 p-4 rounded-2xl flex flex-col items-center justify-center space-y-2 group">
+            <span class="text-4xl md:text-5xl group-hover:scale-110 transition-transform">✋</span>
+            <span class="font-bold text-slate-200 text-sm md:text-base">布</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Battle History Log -->
+      <div class="rpg-panel rounded-2xl p-4 md:p-5 space-y-3">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+          <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+            📜 戰鬥履歷 (Battle Log)
+          </h4>
+          <span class="text-[11px] text-slate-500">最近 10 回合紀錄</span>
+        </div>
+        <div id="battle-log-list" class="space-y-2 max-h-48 overflow-y-auto pr-1 text-xs md:text-sm">
+          <div class="text-slate-500 text-center py-4 italic">戰鬥準備中... 選擇出招即可開始回合！</div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ================= 3. VICTORY / DEFEAT MODAL ================= -->
+    <div id="result-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+      <div class="rpg-panel border-2 rounded-3xl p-6 md:p-8 max-w-lg w-full text-center space-y-6 animate-glow shadow-2xl relative overflow-hidden" id="modal-card">
+        
+        <!-- Outcome Icon Header -->
+        <div class="relative">
+          <div id="modal-icon" class="text-7xl md:text-8xl mb-2 animate-bounce-short">🏆</div>
+          <h2 id="modal-title" class="text-3xl md:text-4xl font-black font-fantasy text-amber-400 tracking-wider">
+            勇者勝利！
+          </h2>
+          <p id="modal-subtitle" class="text-sm text-slate-300 mt-2">
+            你成功擊敗了混沌魔王，守護了王國的和平！
+          </p>
+        </div>
+
+        <!-- Match Stats Box -->
+        <div class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 text-left text-xs md:text-sm space-y-2">
+          <div class="flex justify-between text-slate-400 border-b border-slate-800/80 pb-1.5">
+            <span>最終比分：</span>
+            <span id="modal-final-score" class="font-bold text-amber-400 text-base">5 : 3</span>
+          </div>
+          <div class="flex justify-between text-slate-400">
+            <span>總回合數：</span>
+            <span id="modal-total-rounds" class="font-semibold text-slate-200">7 回合</span>
+          </div>
+          <div class="flex justify-between text-slate-400">
+            <span>裝備技能觸發次數：</span>
+            <span id="modal-equip-triggers" class="font-semibold text-amber-300">2 次</span>
+          </div>
+        </div>
+
+        <!-- Restart Button -->
+        <button id="restart-btn" class="w-full rpg-button bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-slate-950 font-black text-lg py-4 rounded-xl shadow-xl border border-amber-300/40 tracking-wider">
+          再玩一次 🔄
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="py-4 text-center text-xs text-slate-500 border-t border-slate-800/50">
+    剪刀石頭布 RPG 勇者傳說 &copy; HTML5 RPG Game Edition
+  </footer>
+
+  <!-- ================= GAME LOGIC JAVASCRIPT ================= -->
+  <script>
+    // --- Web Audio Synthesizer for SFX ---
+    class SoundManager {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+      }
+
+      playTone(freq, type, duration, gainVal = 0.1) {
+        if (this.muted || !this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch(e) {}
+      }
+
+      playClick() {
+        this.init();
+        this.playTone(440, 'sine', 0.08, 0.08);
+      }
+
+      playWin() {
+        this.init();
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
+          setTimeout(() => this.playTone(f, 'triangle', 0.2, 0.1), i * 80);
+        });
+      }
+
+      playLoss() {
+        this.init();
+        if (this.muted || !this.ctx) return;
+        [300, 260, 220, 180].forEach((f, i) => {
+          setTimeout(() => this.playTone(f, 'sawtooth', 0.2, 0.08), i * 100);
+        });
+      }
+
+      playCrit() {
+        this.init();
+        if (this.muted || !this.ctx) return;
+        this.playTone(150, 'sawtooth', 0.3, 0.2);
+        setTimeout(() => this.playTone(880, 'square', 0.3, 0.15), 100);
+      }
+
+      playShield() {
+        this.init();
+        if (this.muted || !this.ctx) return;
+        this.playTone(220, 'sine', 0.4, 0.25);
+        setTimeout(() => this.playTone(440, 'sine', 0.3, 0.15), 80);
+      }
+
+      playLuck() {
+        this.init();
+        if (this.muted || !this.ctx) return;
+        [587.33, 739.99, 880, 1174.66].forEach((f, i) => {
+          setTimeout(() => this.playTone(f, 'sine', 0.25, 0.1), i * 70);
+        });
+      }
+    }
+
+    const sound = new SoundManager();
+
+    // --- State Management ---
+    const STATE = {
+      playerName: "亞瑟",
+      equipment: "sword", // sword | shield | charm
+      playerScore: 0,
+      computerScore: 0,
+      targetScore: 5,
+      currentRound: 1,
+      shieldActive: true, // Only applicable if equipment === 'shield'
+      equipTriggerCount: 0,
+      isAnimating: false,
+      logs: []
+    };
+
+    const EQUIPMENT_DATA = {
+      sword: { name: "黃金聖劍", icon: "⚔️", color: "text-amber-400" },
+      shield: { name: "魔法盾牌", icon: "🛡️", color: "text-sky-400" },
+      charm: { name: "幸運符咒", icon: "🍀", color: "text-emerald-400" }
+    };
+
+    const MOVES = {
+      rock: { name: "石頭", emoji: "✊" },
+      scissors: { name: "剪刀", emoji: "✌️" },
+      paper: { name: "布", emoji: "✋" }
+    };
+
+    // --- DOM Elements ---
+    const setupScreen = document.getElementById("setup-screen");
+    const gameScreen = document.getElementById("game-screen");
+    const resultModal = document.getElementById("result-modal");
+    const playerNameInput = document.getElementById("player-name-input");
+    const startGameBtn = document.getElementById("start-game-btn");
+    const restartBtn = document.getElementById("restart-btn");
+    const soundToggleBtn = document.getElementById("sound-toggle-btn");
+
+    const hudPlayerName = document.getElementById("hud-player-name");
+    const hudEquipBadge = document.getElementById("hud-equip-badge");
+    const hudShieldStatus = document.getElementById("hud-shield-status");
+    const arenaPlayerName = document.getElementById("arena-player-name");
+
+    const playerScoreStars = document.getElementById("player-score-stars");
+    const computerScoreStars = document.getElementById("computer-score-stars");
+    const playerChoiceDisplay = document.getElementById("player-choice-display");
+    const playerChoiceText = document.getElementById("player-choice-text");
+    const computerChoiceDisplay = document.getElementById("computer-choice-display");
+    const computerChoiceText = document.getElementById("computer-choice-text");
+    const roundCounterBadge = document.getElementById("round-counter-badge");
+    
+    const equipTriggerBanner = document.getElementById("equip-trigger-banner");
+    const equipTriggerIcon = document.getElementById("equip-trigger-icon");
+    const equipTriggerMsg = document.getElementById("equip-trigger-msg");
+    const battleLogList = document.getElementById("battle-log-list");
+
+    // Modal elements
+    const modalTitle = document.getElementById("modal-title");
+    const modalSubtitle = document.getElementById("modal-subtitle");
+    const modalIcon = document.getElementById("modal-icon");
+    const modalFinalScore = document.getElementById("modal-final-score");
+    const modalTotalRounds = document.getElementById("modal-total-rounds");
+    const modalEquipTriggers = document.getElementById("modal-equip-triggers");
+    const modalCard = document.getElementById("modal-card");
+
+    // --- Equipment Radio Input Highlight Listener ---
+    document.querySelectorAll('.equip-card').forEach(card => {
+      card.addEventListener('click', () => {
+        sound.playClick();
+        document.querySelectorAll('.equip-card').forEach(c => {
+          c.classList.remove('border-amber-500', 'bg-slate-800/90');
+          c.classList.add('border-slate-700', 'bg-slate-900/60');
+          const check = c.querySelector('.equip-radio-indicator');
+          if(check) check.textContent = '';
+        });
+
+        card.classList.remove('border-slate-700', 'bg-slate-900/60');
+        card.classList.add('border-amber-500', 'bg-slate-800/90');
+        const check = card.querySelector('.equip-radio-indicator');
+        if(check) check.textContent = '✓';
+      });
+    });
+
+    // Sound toggle
+    soundToggleBtn.addEventListener('click', () => {
+      sound.muted = !sound.muted;
+      document.getElementById('sound-icon').textContent = sound.muted ? '🔇' : '🔊';
+      document.getElementById('sound-text').textContent = sound.muted ? '音效: 關' : '音效: 開';
+      if(!sound.muted) sound.playClick();
+    });
+
+    // --- Initialize Game ---
+    startGameBtn.addEventListener('click', () => {
+      sound.playClick();
+      const rawName = playerNameInput.value.trim();
+      STATE.playerName = rawName ? rawName : "亞瑟";
+
+      // Selected equipment
+      const selectedEquip = document.querySelector('input[name="equipment"]:checked').value;
+      STATE.equipment = selectedEquip;
+      STATE.playerScore = 0;
+      STATE.computerScore = 0;
+      STATE.currentRound = 1;
+      STATE.shieldActive = (selectedEquip === 'shield');
+      STATE.equipTriggerCount = 0;
+      STATE.logs = [];
+
+      // UI update
+      hudPlayerName.textContent = STATE.playerName;
+      arenaPlayerName.textContent = STATE.playerName;
+      
+      const equipInfo = EQUIPMENT_DATA[STATE.equipment];
+      hudEquipBadge.textContent = `${equipInfo.name} ${equipInfo.icon}`;
+      hudEquipBadge.className = `px-2 py-0.5 text-xs font-semibold rounded-full bg-slate-800 border border-slate-700 ${equipInfo.color}`;
+
+      updateShieldHUD();
+      renderScoreStars();
+      updateRoundCounter();
+      battleLogList.innerHTML = `<div class="text-slate-500 text-center py-4 italic">戰鬥準備中... 選擇出招即可開始回合！</div>`;
+      equipTriggerBanner.classList.add('hidden');
+
+      // Switch screens
+      setupScreen.classList.add('hidden');
+      gameScreen.classList.remove('hidden');
+      gameScreen.classList.add('flex');
+    });
+
+    function updateShieldHUD() {
+      if (STATE.equipment === 'shield') {
+        if (STATE.shieldActive) {
+          hudShieldStatus.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span> 魔法盾牌：<span class="text-sky-300 font-bold">【準備就緒】</span>`;
+        } else {
+          hudShieldStatus.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-slate-600"></span> 魔法盾牌：<span class="text-slate-500 font-bold">【已耗盡】</span>`;
+        }
+        hudShieldStatus.classList.remove('hidden');
+      } else {
+        hudShieldStatus.classList.add('hidden');
+      }
+    }
+
+    function renderScoreStars() {
+      // Render Player Stars (5 max)
+      let pStarsHTML = '';
+      for (let i = 1; i <= STATE.targetScore; i++) {
+        if (i <= STATE.playerScore) {
+          pStarsHTML += `<span class="text-amber-400 text-lg md:text-xl drop-shadow-md transition-all scale-110">⭐</span>`;
+        } else {
+          pStarsHTML += `<span class="text-slate-700 text-lg md:text-xl">☆</span>`;
+        }
+      }
+      playerScoreStars.innerHTML = pStarsHTML;
+
+      // Render Computer Stars (5 max)
+      let cStarsHTML = '';
+      for (let i = 1; i <= STATE.targetScore; i++) {
+        if (i <= STATE.computerScore) {
+          cStarsHTML += `<span class="text-red-500 text-lg md:text-xl drop-shadow-md transition-all scale-110">💀</span>`;
+        } else {
+          cStarsHTML += `<span class="text-slate-700 text-lg md:text-xl">💀</span>`;
+        }
+      }
+      computerScoreStars.innerHTML = cStarsHTML;
+    }
+
+    function updateRoundCounter() {
+      roundCounterBadge.textContent = `第 ${STATE.currentRound} 回合`;
+    }
+
+    // --- Choice Button Click Listener ---
+    document.querySelectorAll('.choice-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (STATE.isAnimating || STATE.playerScore >= 5 || STATE.computerScore >= 5) return;
+        sound.playClick();
+        const playerMove = btn.getAttribute('data-move');
+        playRound(playerMove);
+      });
+    });
+
+    // --- Core Game Loop ---
+    function playRound(playerMoveKey) {
+      STATE.isAnimating = true;
+      equipTriggerBanner.classList.add('hidden');
+
+      // Random Computer Move
+      const movesKeys = ['rock', 'scissors', 'paper'];
+      const computerMoveKey = movesKeys[Math.floor(Math.random() * movesKeys.length)];
+
+      const playerMove = MOVES[playerMoveKey];
+      const computerMove = MOVES[computerMoveKey];
+
+      // Shake displays during calculation
+      playerChoiceDisplay.classList.add('animate-shake');
+      computerChoiceDisplay.classList.add('animate-shake');
+      playerChoiceDisplay.textContent = '✊';
+      computerChoiceDisplay.textContent = '✊';
+      playerChoiceText.textContent = '蓄力中...';
+      computerChoiceText.textContent = '蓄力中...';
+
+      setTimeout(() => {
+        playerChoiceDisplay.classList.remove('animate-shake');
+        computerChoiceDisplay.classList.remove('animate-shake');
+
+        // Reveal moves
+        playerChoiceDisplay.textContent = playerMove.emoji;
+        playerChoiceText.textContent = playerMove.name;
+        computerChoiceDisplay.textContent = computerMove.emoji;
+        computerChoiceText.textContent = computerMove.name;
+
+        // Determine Base Logic
+        // Base outcome: 'win' | 'lose' | 'tie'
+        let outcome = 'tie';
+        if (playerMoveKey === computerMoveKey) {
+          outcome = 'tie';
+        } else if (
+          (playerMoveKey === 'rock' && computerMoveKey === 'scissors') ||
+          (playerMoveKey === 'scissors' && computerMoveKey === 'paper') ||
+          (playerMoveKey === 'paper' && computerMoveKey === 'rock')
+        ) {
+          outcome = 'win';
+        } else {
+          outcome = 'lose';
+        }
+
+        let playerGain = 0;
+        let computerGain = 0;
+        let equipTriggerMsgText = "";
+        let equipTriggerIconText = "";
+        let equipTriggeredThisRound = false;
+
+        // --- EQUIPMENT SPECIAL SKILLS CHECK ---
+        
+        // 1. 幸運符咒 (Charm): Tie -> Win (+1 pt)
+        if (outcome === 'tie' && STATE.equipment === 'charm') {
+          outcome = 'win';
+          playerGain = 1;
+          equipTriggeredThisRound = true;
+          STATE.equipTriggerCount++;
+          equipTriggerIconText = "🍀";
+          equipTriggerMsgText = "幸運符咒生效！成功將「平手」轉化為玩家勝利（+1 分）！";
+          sound.playLuck();
+        } 
+        // Standard Tie
+        else if (outcome === 'tie') {
+          playerGain = 0;
+          computerGain = 0;
+        }
+        // Player Base Victory
+        else if (outcome === 'win') {
+          playerGain = 1;
+          // 2. 黃金聖劍 (Sword): 30% chance for Crit (+2 pts)
+          if (STATE.equipment === 'sword') {
+            const isCrit = Math.random() < 0.3;
+            if (isCrit) {
+              playerGain = 2;
+              equipTriggeredThisRound = true;
+              STATE.equipTriggerCount++;
+              equipTriggerIconText = "💥";
+              equipTriggerMsgText = "💥 黃金聖劍觸發爆擊！直接獲得 +2 分！";
+              sound.playCrit();
+              document.body.classList.add('crit-flash');
+              setTimeout(() => document.body.classList.remove('crit-flash'), 600);
+            } else {
+              sound.playWin();
+            }
+          } else {
+            sound.playWin();
+          }
+        } 
+        // Computer Base Victory (Player Defeat)
+        else if (outcome === 'lose') {
+          // 3. 魔法盾牌 (Shield): Blocks 1 computer point if active
+          if (STATE.equipment === 'shield' && STATE.shieldActive) {
+            computerGain = 0;
+            STATE.shieldActive = false;
+            equipTriggeredThisRound = true;
+            STATE.equipTriggerCount++;
+            equipTriggerIconText = "🛡️";
+            equipTriggerMsgText = "🛡️ 魔法盾牌生效！成功抵擋了電腦的得分！";
+            updateShieldHUD();
+            sound.playShield();
+          } else {
+            computerGain = 1;
+            sound.playLoss();
+          }
+        }
+
+        // Apply Scores
+        STATE.playerScore += playerGain;
+        STATE.computerScore += computerGain;
+
+        // Display Equipment Banner if triggered
+        if (equipTriggeredThisRound) {
+          equipTriggerIcon.textContent = equipTriggerIconText;
+          equipTriggerMsg.textContent = equipTriggerMsgText;
+          equipTriggerBanner.classList.remove('hidden');
+        }
+
+        // Update Score Display
+        renderScoreStars();
+
+        // Add Log Entry
+        addBattleLog({
+          round: STATE.currentRound,
+          playerMove: playerMove,
+          computerMove: computerMove,
+          outcome: outcome,
+          playerGain: playerGain,
+          computerGain: computerGain,
+          equipMsg: equipTriggeredThisRound ? equipTriggerMsgText : null
+        });
+
+        // Next Round Prep
+        STATE.currentRound++;
+        updateRoundCounter();
+
+        // Check End Condition
+        if (STATE.playerScore >= STATE.targetScore || STATE.computerScore >= STATE.targetScore) {
+          setTimeout(() => {
+            showMatchResult();
+          }, 800);
+        } else {
+          STATE.isAnimating = false;
+        }
+
+      }, 450);
+    }
+
+    // --- Battle Log Formatter ---
+    function addBattleLog(log) {
+      // Remove initial placeholder text
+      if (STATE.logs.length === 0) {
+        battleLogList.innerHTML = '';
+      }
+
+      STATE.logs.unshift(log);
+
+      const logItem = document.createElement('div');
+      logItem.className = "flex items-start justify-between p-2.5 rounded-xl bg-slate-900/70 border border-slate-800/80 transition-all";
+
+      let resultTag = '';
+      if (log.outcome === 'win') {
+        resultTag = `<span class="px-2 py-0.5 text-[11px] font-bold rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">回合勝 +${log.playerGain}</span>`;
+      } else if (log.outcome === 'lose') {
+        if (log.computerGain === 0) {
+          resultTag = `<span class="px-2 py-0.5 text-[11px] font-bold rounded bg-sky-500/20 text-sky-400 border border-sky-500/30">盾牌抵擋</span>`;
+        } else {
+          resultTag = `<span class="px-2 py-0.5 text-[11px] font-bold rounded bg-red-500/20 text-red-400 border border-red-500/30">電腦勝 +1</span>`;
+        }
+      } else {
+        resultTag = `<span class="px-2 py-0.5 text-[11px] font-bold rounded bg-slate-700 text-slate-300">平手</span>`;
+      }
+
+      let equipHighlight = log.equipMsg ? `<div class="text-[11px] text-amber-300 mt-1 font-semibold flex items-center gap-1">${log.equipMsg}</div>` : '';
+
+      logItem.innerHTML = `
+        <div class="flex flex-col">
+          <div class="flex items-center space-x-2">
+            <span class="font-bold text-slate-400 text-xs">R${log.round}</span>
+            <span class="text-slate-200">${STATE.playerName} (${log.playerMove.emoji})</span>
+            <span class="text-slate-500">vs</span>
+            <span class="text-slate-200">魔王 (${log.computerMove.emoji})</span>
+          </div>
+          ${equipHighlight}
+        </div>
+        <div>
+          ${resultTag}
+        </div>
+      `;
+
+      battleLogList.prepend(logItem);
+
+      // Keep max 10 DOM elements
+      while (battleLogList.children.length > 10) {
+        battleLogList.removeChild(battleLogList.lastChild);
+      }
+    }
+
+    // --- Show Victory / Defeat Modal ---
+    function showMatchResult() {
+      const isPlayerWinner = STATE.playerScore >= STATE.targetScore;
+
+      if (isPlayerWinner) {
+        sound.playWin();
+        modalIcon.textContent = "🏆";
+        modalTitle.textContent = "勇者大獲全勝！";
+        modalTitle.className = "text-3xl md:text-4xl font-black font-fantasy text-amber-400 tracking-wider";
+        modalSubtitle.textContent = `恭喜勇者 ${STATE.playerName} 成功討伐混沌魔王，守護了王國的和平！`;
+        modalCard.className = "rpg-panel border-2 border-amber-500/80 rounded-3xl p-6 md:p-8 max-w-lg w-full text-center space-y-6 animate-glow shadow-2xl relative overflow-hidden";
+      } else {
+        sound.playLoss();
+        modalIcon.textContent = "💀";
+        modalTitle.textContent = "戰敗... 討伐失敗";
+        modalTitle.className = "text-3xl md:text-4xl font-black font-fantasy text-red-500 tracking-wider";
+        modalSubtitle.textContent = `勇者 ${STATE.playerName} 不敵混沌魔王，請裝備更強大的道具再試一次！`;
+        modalCard.className = "rpg-panel border-2 border-red-600/80 rounded-3xl p-6 md:p-8 max-w-lg w-full text-center space-y-6 shadow-2xl relative overflow-hidden";
+      }
+
+      modalFinalScore.textContent = `${STATE.playerScore} : ${STATE.computerScore}`;
+      modalTotalRounds.textContent = `${STATE.currentRound - 1} 回合`;
+      modalEquipTriggers.textContent = `${STATE.equipTriggerCount} 次`;
+
+      resultModal.classList.remove('hidden');
+    }
+
+    // --- Restart Match ---
+    restartBtn.addEventListener('click', () => {
+      sound.playClick();
+      resultModal.classList.add('hidden');
+      gameScreen.classList.remove('flex');
+      gameScreen.classList.add('hidden');
+      setupScreen.classList.remove('hidden');
+      STATE.isAnimating = false;
+    });
+
+  </script>
+</body>
+</html>
